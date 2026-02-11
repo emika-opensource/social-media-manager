@@ -221,3 +221,61 @@ The app is a **solid CRUD skeleton with a beautiful UI** but delivers almost no 
 
 Time-to-first-value today: **∞ (no clear path to value)**  
 Time-to-first-value with fixes 1+2+8: **~2 minutes**
+
+---
+
+## Fixes Applied
+
+**Date:** 2026-02-11
+
+### Critical (all done)
+
+1. **✅ First-run welcome/onboarding screen** — When `onboardingComplete` is false and no posts exist, the dashboard shows a guided welcome screen with 2 questions (business/audience + platforms). Users can also skip to explore freely. Config gains `onboardingComplete` flag.
+
+2. **✅ BOOTSTRAP.md compressed to 2 questions** — Removed the 6-step interrogation. Now asks business/audience + platforms, then immediately creates sample drafts. Added honest notes about planning-only nature and manual publishing.
+
+3. **✅ Fake analytics completely removed** — All `Math.random()` removed from server and client. Analytics now shows only real data: post counts (total, drafts, scheduled, published), weekly post creation trend (actual counts), and platform breakdown by published posts. Empty states say "No posts created this week" instead of showing fake numbers.
+
+4. **✅ Loading states added** — Spinner shown during initial `loadAll()`. If server is unreachable, shows error with retry button instead of blank screen.
+
+### High Impact (all done)
+
+5. **✅ Toast notification system** — Replaced all `alert()` calls with non-blocking toast notifications (success/error). Toasts appear top-right, auto-dismiss after 3 seconds. Used for: post saved, settings updated, reference deleted, copy to clipboard, errors.
+
+6. **✅ Error handling on all API calls** — `api()` helper now checks `res.ok` and throws with server error message. All callers wrapped in try/catch with user-friendly error toasts. Network failures on initial load show error state with retry button.
+
+7. **✅ SKILL.md updated for honesty** — Explicitly documents: no automatic publishing (planning tool only), analytics show activity data not engagement metrics, Apify requires configuration. Added first-run detection guidance and error recovery section.
+
+8. **✅ "Copy to Clipboard" buttons everywhere** — Added to: post editor preview pane, scheduler list rows, calendar day modal, inspiration cards, reference cards. Uses `navigator.clipboard` with fallback. `formatPostForCopy()` formats title + content + hashtags.
+
+9. **✅ Server-side input validation** — Posts require non-empty `content`. Platform must be one of the valid 6. Status must be draft/scheduled/published. Invalid dates rejected. Arrays validated. Returns 400 with clear error messages.
+
+10. **✅ Apify scan UX fixed** — New `/api/scan/status` endpoint exposes whether `APIFY_TOKEN` is configured. Inspiration page shows warning banner when not configured. Scan button shows error toast if unconfigured. Scan modal validates non-empty URLs.
+
+### Medium Impact (done)
+
+11. **✅ Reference delete confirmation** — References now require `confirm()` before deletion, matching posts behavior.
+
+12. **✅ Polling race condition fixed** — `pollApifyRun` now uses result `id` instead of array index. Finds by ID on each poll iteration so concurrent scans can't corrupt each other. Also logs polling errors and marks timed-out scans as failed.
+
+13. **✅ Media URL shown in preview** — Post editor preview now renders media URL as an image (with fallback to text URL if image fails to load).
+
+14. **✅ "Mark as Published" button** — Scheduler list rows have a ✅ button to mark scheduled posts as published without editing.
+
+15. **✅ Debounced reference search** — Search input debounced at 250ms instead of firing on every keystroke.
+
+16. **✅ Scheduler explains planning mode** — Notice card at top explains that posts are for manual publishing via copy button.
+
+17. **✅ Editor validation UX** — Inline error messages below save buttons (not alerts). Content field marked as required. Buttons show "Saving..." state while API calls are in progress.
+
+18. **✅ Apify polling error handling** — Catch block now logs errors instead of silently swallowing. Max-attempt timeout marks scan as failed instead of leaving it "running" forever.
+
+### Summary
+
+All critical, high-impact, and several medium-impact items from the audit have been addressed. The app now has:
+- A clear first-run experience (welcome → 2 questions → ready)
+- Honest data everywhere (no fake analytics)
+- Copy-to-clipboard as the primary value delivery mechanism
+- Proper error handling and loading states throughout
+- Input validation on both client and server
+- Toast notifications instead of `alert()`

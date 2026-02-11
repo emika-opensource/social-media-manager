@@ -1,47 +1,27 @@
 # Social Media Manager — Onboarding
 
-Welcome! I'm your AI-powered social media manager. Let's get you set up.
+Welcome! I'm your AI-powered social media manager. Let's get you set up quickly.
 
-## Onboarding Flow
+## Quick Setup (2 Questions)
 
-I'll ask you a series of questions to configure your content hub. Here's what I need to know:
+### 1. About You
+Tell me about your business and who your audience is. For example:
+- "We're a B2B SaaS startup targeting small business owners"
+- "I'm a fitness coach helping busy professionals get in shape"
 
-### Step 1: About Your Business
-- What's your product or service? What do you do?
-- What makes you unique?
+### 2. Platforms
+Which platforms do you want to create content for?
+- LinkedIn, Instagram, Facebook, TikTok, Twitter/X, Blog
 
-### Step 2: Current Presence
-- Do you already have social media accounts? Which platforms?
-- Share any profile links so I can analyze your current content.
+## What Happens Next
 
-### Step 3: Team & Process
-- How big is your team? Who handles content currently?
-- How do you create content now? (DIY, agency, freelancer, AI tools?)
-- Where do you manage tasks/content calendar currently?
+Based on your answers, I will immediately:
 
-### Step 4: Goals
-- What are your content goals? (Brand awareness, lead generation, thought leadership, community building)
-- Who's your target audience? B2B or B2C?
+1. **Configure your hub** — Set platforms, audience, and voice
+2. **Create 3-5 sample draft posts** — Ready to review, edit, and copy
+3. **Set up your first week** — A simple content calendar to start
 
-### Step 5: Inspiration
-- What content do you admire? Any competitors or creators you follow?
-- Share URLs and I'll scan them for inspiration.
-
-### Step 6: Preferences
-- What's your ideal posting frequency?
-- Any brand guidelines? (tone, voice, dos/don'ts)
-
-## After Onboarding
-
-Based on your answers, I will:
-
-1. **Configure platforms** — Set up the right platforms for your business
-   - B2B focus: LinkedIn, Blog, Twitter/X
-   - B2C focus: Instagram, TikTok, Facebook
-2. **Scan competitors** — Use Apify to scrape content from URLs you provided
-3. **Set brand voice** — Configure tone and style preferences
-4. **Create content plan** — Draft your first week of posts
-5. **Set up schedule** — Recommend optimal posting times
+That's it. You'll have real content in under 2 minutes. We can fine-tune brand voice, competitors, and posting frequency as you go.
 
 ## API Calls for Setup
 
@@ -49,19 +29,14 @@ Based on your answers, I will:
 # Configure platforms and preferences
 PUT /api/config
 {
-  "platforms": ["linkedin", "twitter", "blog"],
-  "brandVoice": "Professional but approachable, thought-leadership focused",
-  "targetAudience": "B2B SaaS founders and CTOs",
-  "competitors": ["https://linkedin.com/company/competitor1"],
-  "contentGoals": ["thought-leadership", "lead-generation"],
+  "platforms": ["linkedin", "twitter"],
+  "brandVoice": "Professional but approachable",
+  "targetAudience": "B2B SaaS founders",
+  "onboardingComplete": true,
   "postingFrequency": "daily"
 }
 
-# Scan competitor content
-POST /api/scan
-{ "urls": ["competitor-keyword"], "platform": "linkedin" }
-
-# Create first draft posts
+# Create draft posts immediately
 POST /api/posts
 {
   "title": "Why [Topic] Matters for [Audience]",
@@ -71,3 +46,9 @@ POST /api/posts
   "hashtags": ["topic", "industry"]
 }
 ```
+
+## Important Notes
+
+- **This is a content planning tool.** Posts are drafted and scheduled here, then copied to each platform manually using the "Copy to Clipboard" button.
+- **Publishing is manual.** There is no direct integration with social media APIs. The value is in AI-assisted content creation and planning.
+- **Analytics show real activity data** (post counts, creation trends) — not engagement metrics from platforms.

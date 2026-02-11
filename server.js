@@ -35,6 +35,9 @@ function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+const VALID_PLATFORMS = ['linkedin','instagram','facebook','tiktok','twitter','blog'];
+const VALID_STATUSES = ['draft','scheduled','published'];
+
 // ── POSTS CRUD ───────────────────────────────────────────────────────────────
 
 app.get('/api/posts', async (req, res) => {
@@ -50,18 +53,32 @@ app.get('/api/posts', async (req, res) => {
 
 app.post('/api/posts', async (req, res) => {
   try {
+    const { content, platform, status } = req.body;
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: 'Content is required' });
+    }
+    if (platform && !VALID_PLATFORMS.includes(platform)) {
+      return res.status(400).json({ error: `Invalid platform. Must be one of: ${VALID_PLATFORMS.join(', ')}` });
+    }
+    if (status && !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({ error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}` });
+    }
+    if (req.body.scheduledAt && isNaN(Date.parse(req.body.scheduledAt))) {
+      return res.status(400).json({ error: 'Invalid scheduledAt date format' });
+    }
+
     const posts = await readJSON('posts.json');
     const post = {
       id: uid(),
-      title: req.body.title || '',
-      content: req.body.content || '',
-      platform: req.body.platform || 'linkedin',
-      status: req.body.status || 'draft',
+      title: (req.body.title || '').slice(0, 500),
+      content: content.trim(),
+      platform: platform || 'linkedin',
+      status: status || 'draft',
       scheduledAt: req.body.scheduledAt || null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      tags: req.body.tags || [],
-      hashtags: req.body.hashtags || [],
+      tags: Array.isArray(req.body.tags) ? req.body.tags : [],
+      hashtags: Array.isArray(req.body.hashtags) ? req.body.hashtags : [],
       mediaUrl: req.body.mediaUrl || null
     };
     posts.push(post);
@@ -72,6 +89,15 @@ app.post('/api/posts', async (req, res) => {
 
 app.put('/api/posts/:id', async (req, res) => {
   try {
+    if (req.body.platform && !VALID_PLATFORMS.includes(req.body.platform)) {
+      return res.status(400).json({ error: `Invalid platform. Must be one of: ${VALID_PLATFORMS.join(', ')}` });
+    }
+    if (req.body.status && !VALID_STATUSES.includes(req.body.status)) {
+      return res.status(400).json({ error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}` });
+    }
+    if (req.body.content !== undefined && (!req.body.content || !req.body.content.trim())) {
+      return res.status(400).json({ error: 'Content cannot be empty' });
+    }
     const posts = await readJSON('posts.json');
     const idx = posts.findIndex(p => p.id === req.params.id);
     if (idx === -1) return res.status(404).json({ error: 'Post not found' });
@@ -108,7 +134,7 @@ app.post('/api/references', async (req, res) => {
       title: req.body.title || '',
       content: req.body.content || '',
       platform: req.body.platform || '',
-      tags: req.body.tags || [],
+      tags: Array.isArray(req.body.tags) ? req.body.tags : [],
       note: req.body.note || '',
       savedAt: new Date().toISOString()
     };
@@ -180,7 +206,8 @@ const defaultConfig = {
   competitors: [],
   targetAudience: '',
   contentGoals: [],
-  postingFrequency: 'daily'
+  postingFrequency: 'daily',
+  onboardingComplete: false
 };
 
 app.get('/api/config', async (req, res) => {
@@ -212,9 +239,21 @@ const APIFY_ACTORS = {
   web: 'apify/web-scraper'
 };
 
+app.get('/api/scan/status', (req, res) => {
+  res.json({ configured: !!APIFY_TOKEN });
+});
+
 app.post('/api/scan', async (req, res) => {
   try {
+    if (!APIFY_TOKEN) {
+      return res.status(400).json({ error: 'Apify token not configured. Set APIFY_TOKEN environment variable to enable content scanning.' });
+    }
+
     const { urls = [], platform = 'linkedin' } = req.body;
+    if (!urls.length) {
+      return res.status(400).json({ error: 'At least one URL or search term is required' });
+    }
+
     const actorId = APIFY_ACTORS[platform] || APIFY_ACTORS.web;
 
     const input = platform === 'linkedin'
@@ -237,8 +276,9 @@ app.post('/api/scan', async (req, res) => {
 
     // Store run info
     const results = await readJSON('scan-results.json');
+    const resultId = uid();
     results.push({
-      id: uid(),
+      id: resultId,
       runId: runData.data?.id,
       platform,
       urls,
@@ -248,14 +288,14 @@ app.post('/api/scan', async (req, res) => {
     });
     await writeJSON('scan-results.json', results);
 
-    // Poll for results (background)
-    pollApifyRun(runData.data?.id, results.length - 1);
+    // Poll for results (background) — use ID not index
+    pollApifyRun(runData.data?.id, resultId);
 
     res.json({ success: true, runId: runData.data?.id, status: 'running' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-async function pollApifyRun(runId, resultIdx) {
+async function pollApifyRun(runId, resultId) {
   if (!runId) return;
   const maxAttempts = 30;
   for (let i = 0; i < maxAttempts; i++) {
@@ -272,23 +312,38 @@ async function pollApifyRun(runId, resultIdx) {
         );
         const items = await itemsRes.json();
         const results = await readJSON('scan-results.json');
-        if (results[resultIdx]) {
-          results[resultIdx].status = 'completed';
-          results[resultIdx].items = items;
-          results[resultIdx].completedAt = new Date().toISOString();
+        const idx = results.findIndex(r => r.id === resultId);
+        if (idx !== -1) {
+          results[idx].status = 'completed';
+          results[idx].items = items;
+          results[idx].completedAt = new Date().toISOString();
           await writeJSON('scan-results.json', results);
         }
         return;
       } else if (['FAILED', 'ABORTED', 'TIMED-OUT'].includes(statusData.data?.status)) {
         const results = await readJSON('scan-results.json');
-        if (results[resultIdx]) {
-          results[resultIdx].status = 'failed';
+        const idx = results.findIndex(r => r.id === resultId);
+        if (idx !== -1) {
+          results[idx].status = 'failed';
+          results[idx].error = statusData.data?.status;
           await writeJSON('scan-results.json', results);
         }
         return;
       }
-    } catch {}
+    } catch (e) {
+      console.error(`Polling error for run ${runId}:`, e.message);
+    }
   }
+  // Max attempts reached — mark as timed out
+  try {
+    const results = await readJSON('scan-results.json');
+    const idx = results.findIndex(r => r.id === resultId);
+    if (idx !== -1 && results[idx].status === 'running') {
+      results[idx].status = 'failed';
+      results[idx].error = 'Polling timed out';
+      await writeJSON('scan-results.json', results);
+    }
+  } catch {}
 }
 
 app.get('/api/scan/results', async (req, res) => {
@@ -296,7 +351,7 @@ app.get('/api/scan/results', async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── ANALYTICS (mock) ─────────────────────────────────────────────────────────
+// ── ANALYTICS (real data only) ───────────────────────────────────────────────
 
 app.get('/api/analytics', async (req, res) => {
   try {
@@ -304,14 +359,23 @@ app.get('/api/analytics', async (req, res) => {
     const published = posts.filter(p => p.status === 'published');
     const platforms = {};
     published.forEach(p => {
-      if (!platforms[p.platform]) platforms[p.platform] = { posts: 0, impressions: 0, engagement: 0 };
+      if (!platforms[p.platform]) platforms[p.platform] = { posts: 0 };
       platforms[p.platform].posts++;
-      platforms[p.platform].impressions += Math.floor(Math.random() * 5000) + 500;
-      platforms[p.platform].engagement += Math.floor(Math.random() * 300) + 20;
     });
 
     const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
     const thisWeek = posts.filter(p => p.createdAt >= weekAgo);
+
+    // Build real weekly post counts
+    const weeklyTrend = Array.from({ length: 7 }, (_, i) => {
+      const day = new Date(Date.now() - (6 - i) * 86400000);
+      const dayStr = day.toISOString().slice(0, 10);
+      const dayPosts = posts.filter(p => p.createdAt && p.createdAt.startsWith(dayStr));
+      return {
+        day: day.toLocaleDateString('en', { weekday: 'short' }),
+        posts: dayPosts.length
+      };
+    });
 
     res.json({
       totalPosts: posts.length,
@@ -320,17 +384,7 @@ app.get('/api/analytics', async (req, res) => {
       scheduled: posts.filter(p => p.status === 'scheduled').length,
       thisWeek: thisWeek.length,
       platforms,
-      engagement: {
-        totalImpressions: Object.values(platforms).reduce((s, p) => s + p.impressions, 0),
-        totalEngagement: Object.values(platforms).reduce((s, p) => s + p.engagement, 0),
-        avgEngagementRate: published.length > 0 ? ((Object.values(platforms).reduce((s, p) => s + p.engagement, 0) / Math.max(1, Object.values(platforms).reduce((s, p) => s + p.impressions, 0))) * 100).toFixed(2) : 0
-      },
-      weeklyTrend: Array.from({ length: 7 }, (_, i) => ({
-        day: new Date(Date.now() - (6 - i) * 86400000).toLocaleDateString('en', { weekday: 'short' }),
-        posts: Math.floor(Math.random() * 5),
-        impressions: Math.floor(Math.random() * 3000) + 200,
-        engagement: Math.floor(Math.random() * 200) + 10
-      }))
+      weeklyTrend
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
