@@ -77,7 +77,6 @@ const views = {
   create: renderCreate,
   calendar: renderCalendar,
   references: renderReferences,
-  analytics: renderAnalytics,
   settings: renderSettings
 };
 
@@ -269,11 +268,19 @@ function renderDashboard(container) {
       <div class="card stat-card"><div class="stat-value">${a.scheduled || 0}</div><div class="stat-label">Scheduled</div></div>
       <div class="card stat-card"><div class="stat-value">${a.published || 0}</div><div class="stat-label">Published</div></div>
     </div>
-    <div class="card-grid card-grid-2">
+    <div class="card-grid card-grid-2 mb-20">
       <div class="card">
-        <h3 class="fw-600 mb-16">Recent Posts</h3>
-        <div id="recent-posts"></div>
+        <h3 class="fw-600 mb-16">Posts This Week</h3>
+        <div class="chart-bars" id="weekly-chart"></div>
       </div>
+      <div class="card">
+        <h3 class="fw-600 mb-16">By Platform</h3>
+        <div id="platform-chart"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 class="fw-600 mb-16">Recent Posts</h3>
+      <div id="recent-posts"></div>
     </div>`;
 
   const rp = document.getElementById('recent-posts');
@@ -288,6 +295,34 @@ function renderDashboard(container) {
         <div>${platformBadge(p.platform)}</div>
         <div class="text-xs text-muted">${formatDate(p.updatedAt || p.createdAt)}</div>`;
       rp.appendChild(row);
+    });
+  }
+
+  // Weekly chart
+  const trend = a.weeklyTrend || [];
+  const maxPosts = Math.max(1, ...trend.map(t => t.posts));
+  const wc = document.getElementById('weekly-chart');
+  if (trend.every(t => t.posts === 0)) {
+    wc.innerHTML = '<div class="empty-state" style="height:100%;display:flex;align-items:center;justify-content:center"><p class="text-muted">No posts this week</p></div>';
+  } else {
+    trend.forEach(t => {
+      const pct = (t.posts / maxPosts) * 100;
+      wc.innerHTML += `<div class="chart-bar-wrap"><div class="chart-bar-value">${t.posts}</div><div class="chart-bar" style="height:${pct}%"></div><div class="chart-bar-label">${t.day}</div></div>`;
+    });
+  }
+
+  // Platform chart
+  const platforms = a.platforms || {};
+  const pc = document.getElementById('platform-chart');
+  const platKeys = Object.keys(platforms);
+  if (!platKeys.length) {
+    pc.innerHTML = '<div class="empty-state" style="padding:40px 20px"><p class="text-muted">No published posts yet</p></div>';
+  } else {
+    pc.className = 'chart-bars';
+    const maxP = Math.max(1, ...Object.values(platforms).map(p => p.posts));
+    platKeys.forEach(plat => {
+      const pct = (platforms[plat].posts / maxP) * 100;
+      pc.innerHTML += `<div class="chart-bar-wrap"><div class="chart-bar-value">${platforms[plat].posts}</div><div class="chart-bar ${plat}" style="height:${pct}%"></div><div class="chart-bar-label">${PLATFORM_LABELS[plat] || plat}</div></div>`;
     });
   }
 }
