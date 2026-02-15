@@ -389,6 +389,28 @@ app.get('/api/analytics', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── PIPELINE STAGES ──────────────────────────────────────────────────────────
+
+const DEFAULT_STAGES = ['Idea', 'Draft', 'Review', 'Scheduled', 'Published'];
+
+app.get('/api/pipeline/stages', async (req, res) => {
+  try {
+    const stages = await readJSON('stages.json', DEFAULT_STAGES);
+    res.json(stages);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/pipeline/stages', async (req, res) => {
+  try {
+    const stages = req.body;
+    if (!Array.isArray(stages) || stages.length === 0) {
+      return res.status(400).json({ error: 'Stages must be a non-empty array' });
+    }
+    await writeJSON('stages.json', stages);
+    res.json(stages);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── SPA fallback ─────────────────────────────────────────────────────────────
 
 app.get('*', (req, res) => {
