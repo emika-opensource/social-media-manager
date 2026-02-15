@@ -174,11 +174,13 @@ textarea { resize: vertical; }
 #content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 32px 36px;
   background: var(--bg);
+  min-width: 0;
 }
 
-#view-container { max-width: 1400px; }
+#view-container { max-width: 100%; overflow-x: hidden; }
 
 /* ── Page Headers ─────────────────────────────────────────────────────────── */
 .page-header {
@@ -226,7 +228,7 @@ textarea { resize: vertical; }
 .card-grid { display: grid; gap: 16px; }
 .card-grid-2 { grid-template-columns: repeat(2, 1fr); }
 .card-grid-3 { grid-template-columns: repeat(3, 1fr); }
-.card-grid-4 { grid-template-columns: repeat(4, 1fr); }
+.card-grid-4 { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
 
 /* ── Stat Cards ───────────────────────────────────────────────────────────── */
 .stat-card { position: relative; overflow: hidden; }
