@@ -308,10 +308,6 @@ function renderPipeline(container) {
   container.innerHTML = `
     <div class="page-header"><div><h1>Pipeline</h1><div class="subtitle">Drag posts between stages</div></div>
       <div class="flex gap-8">
-        <button class="btn btn-secondary" id="btn-manage-stages">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-          Manage Stages
-        </button>
         <button class="btn btn-primary" onclick="location.hash='create'">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           New Post
@@ -375,7 +371,6 @@ function renderPipeline(container) {
     pc.appendChild(col);
   });
 
-  document.getElementById('btn-manage-stages').onclick = () => openStageManager();
 }
 
 function openStageManager() {
@@ -892,6 +887,11 @@ function renderSettings(container) {
         <div class="form-group"><label>Competitor URLs (one per line)</label><textarea id="set-competitors">${(c.competitors || []).join('\n')}</textarea></div>
       </div>
       <div class="settings-section">
+        <h3>Pipeline Stages</h3>
+        <div class="subtitle mb-12">Customize your content pipeline stages</div>
+        <div id="settings-stages"></div>
+      </div>
+      <div class="settings-section">
         <h3>Posting</h3>
         <div class="form-group"><label>Posting Frequency</label><div id="set-freq-wrap"></div></div>
         <div class="form-group"><label>Timezone</label><input type="text" id="set-timezone" value="${escHtml(c.timezone || 'UTC')}" placeholder="UTC"></div>
@@ -914,12 +914,38 @@ function renderSettings(container) {
     { value: 'weekly', label: 'Weekly' }
   ], freq, v => { freq = v; }));
 
+  // Pipeline stages editor
+  let editStages = [...state.pipelineStages];
+  const stagesContainer = document.getElementById('settings-stages');
+  function renderStageEditor() {
+    stagesContainer.innerHTML = '';
+    editStages.forEach((s, i) => {
+      const row = el('div', { style: 'display:flex;gap:8px;align-items:center;margin-bottom:6px' });
+      const inp = el('input', { type: 'text', value: s, style: 'flex:1' });
+      inp.addEventListener('change', () => { editStages[i] = inp.value; });
+      const upBtn = el('button', { className: 'btn btn-ghost btn-sm', innerHTML: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M3 5l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>', onClick: () => { if (i > 0) { [editStages[i-1], editStages[i]] = [editStages[i], editStages[i-1]]; renderStageEditor(); } } });
+      const downBtn = el('button', { className: 'btn btn-ghost btn-sm', innerHTML: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 10V2M3 7l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>', onClick: () => { if (i < editStages.length - 1) { [editStages[i], editStages[i+1]] = [editStages[i+1], editStages[i]]; renderStageEditor(); } } });
+      const delBtn = el('button', { className: 'btn btn-ghost btn-sm', style: 'color:var(--error)', innerHTML: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>', onClick: () => { if (editStages.length > 1) { editStages.splice(i, 1); renderStageEditor(); } } });
+      row.append(inp, upBtn, downBtn, delBtn);
+      stagesContainer.appendChild(row);
+    });
+    const addBtn = el('button', { className: 'btn btn-secondary btn-sm', style: 'margin-top:8px', textContent: 'Add Stage', onClick: () => { editStages.push('New Stage'); renderStageEditor(); } });
+    stagesContainer.appendChild(addBtn);
+  }
+  renderStageEditor();
+
   document.getElementById('btn-save-settings').onclick = async () => {
     const platforms = [...platContainer.querySelectorAll('.platform-chip.selected')].map(c => PLATFORMS[Array.from(platContainer.children).indexOf(c)]);
     if (!platforms.length) { showToast('Select at least one platform', 'error'); return; }
     const btn = document.getElementById('btn-save-settings');
     btn.disabled = true; btn.textContent = 'Saving...';
     try {
+      // Save stages
+      const cleanedStages = editStages.map(s => s.trim()).filter(Boolean);
+      if (cleanedStages.length) {
+        await api('/api/pipeline/stages', { method: 'PUT', body: cleanedStages });
+        state.pipelineStages = cleanedStages;
+      }
       await api('/api/config', { method: 'PUT', body: {
         platforms,
         brandVoice: document.getElementById('set-voice').value,
