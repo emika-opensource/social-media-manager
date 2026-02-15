@@ -3,6 +3,7 @@ const cors = require('cors');
 const fs = require('fs-extra');
 const path = require('path');
 const fetch = require('node-fetch');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -213,16 +214,43 @@ const defaultConfig = {
 app.get('/api/config', async (req, res) => {
   try {
     const config = await readJSON('config.json', defaultConfig);
-    res.json({ ...defaultConfig, ...config });
+    const merged = { ...defaultConfig, ...config };
+    const { pin, pinHash, ...safeConfig } = merged;
+    safeConfig.pinEnabled = !!(pin || pinHash);
+    res.json(safeConfig);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/verify-pin', async (req, res) => {
+  try {
+    const config = await readJSON('config.json', defaultConfig);
+    const entered = req.body.pin;
+    if (!entered || typeof entered !== 'string') return res.status(400).json({ error: 'PIN required' });
+    const enteredHash = crypto.createHash('sha256').update(entered).digest('hex');
+    if (config.pinHash && enteredHash === config.pinHash) return res.json({ success: true });
+    if (config.pin && entered === config.pin) {
+      config.pinHash = enteredHash;
+      delete config.pin;
+      await writeJSON('config.json', config);
+      return res.json({ success: true });
+    }
+    res.status(401).json({ success: false, error: 'Wrong PIN' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put('/api/config', async (req, res) => {
   try {
     const current = await readJSON('config.json', defaultConfig);
-    const updated = { ...current, ...req.body };
+    const { pin, ...otherFields } = req.body;
+    if (pin !== undefined) {
+      if (pin === null) { delete current.pin; delete current.pinHash; }
+      else { current.pinHash = crypto.createHash('sha256').update(pin).digest('hex'); delete current.pin; }
+    }
+    const updated = { ...current, ...otherFields };
     await writeJSON('config.json', updated);
-    res.json(updated);
+    const { pin: _p, pinHash: _ph, ...safeUpdated } = updated;
+    safeUpdated.pinEnabled = !!(_p || _ph);
+    res.json(safeUpdated);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

@@ -114,9 +114,51 @@ window.addEventListener('DOMContentLoaded', async () => {
     container.innerHTML = '<div class="empty-state"><h3>Failed to connect</h3><p>Could not reach the server.</p><button class="btn btn-primary" onclick="location.reload()">Retry</button></div>';
     return;
   }
+  // PIN check
+  if (state.config.pinEnabled && !sessionStorage.getItem('ch-pin-auth')) {
+    showPinScreen();
+    return;
+  }
   state.loading = false;
   navigate(location.hash.slice(1) || 'dashboard');
 });
+
+function showPinScreen() {
+  document.getElementById('sidebar').style.display = 'none';
+  const container = document.getElementById('view-container');
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:var(--bg)">
+      <div style="text-align:center;max-width:320px;width:100%">
+        <svg width="40" height="40" viewBox="0 0 20 20" fill="none" style="margin-bottom:16px"><rect x="3" y="9" width="14" height="9" rx="2" stroke="#c0c0c0" stroke-width="1.5"/><path d="M6 9V6a4 4 0 118 0v3" stroke="#c0c0c0" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <h2 style="font-size:1.2rem;font-weight:600;margin-bottom:4px">Content Hub</h2>
+        <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:24px">Enter PIN to continue</p>
+        <input type="password" id="pin-input" placeholder="Enter PIN" maxlength="20" style="width:100%;text-align:center;font-size:1.1rem;letter-spacing:4px;padding:12px;margin-bottom:12px">
+        <div id="pin-error" style="color:var(--error);font-size:0.85rem;margin-bottom:12px;display:none"></div>
+        <button class="btn btn-primary" id="pin-submit" style="width:100%">Unlock</button>
+      </div>
+    </div>`;
+  const inp = document.getElementById('pin-input');
+  const err = document.getElementById('pin-error');
+  inp.focus();
+  async function tryPin() {
+    const pin = inp.value.trim();
+    if (!pin) return;
+    try {
+      const res = await fetch('/api/verify-pin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) });
+      if (res.ok) {
+        sessionStorage.setItem('ch-pin-auth', '1');
+        document.getElementById('sidebar').style.display = '';
+        state.loading = false;
+        navigate(location.hash.slice(1) || 'dashboard');
+      } else {
+        err.textContent = 'Wrong PIN'; err.style.display = 'block';
+        inp.value = ''; inp.focus();
+      }
+    } catch (e) { err.textContent = 'Connection error'; err.style.display = 'block'; }
+  }
+  document.getElementById('pin-submit').onclick = tryPin;
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') tryPin(); });
+}
 
 // ── Modal ────────────────────────────────────────────────────────────────────
 function openModal(title, contentFn) {
@@ -921,6 +963,14 @@ function renderSettings(container) {
         <div class="form-group"><label>Posting Frequency</label><div id="set-freq-wrap"></div></div>
         <div class="form-group"><label>Timezone</label><input type="text" id="set-timezone" value="${escHtml(c.timezone || 'UTC')}" placeholder="UTC"></div>
       </div>
+      <div class="settings-section">
+        <h3>PIN Protection</h3>
+        <div class="subtitle mb-12">${c.pinEnabled ? 'PIN is enabled' : 'No PIN set'}</div>
+        <div class="flex gap-8">
+          <input type="password" id="set-pin" placeholder="${c.pinEnabled ? 'New PIN (leave blank to keep)' : 'Set a PIN'}" maxlength="20" style="flex:1">
+          ${c.pinEnabled ? '<button class="btn btn-secondary" id="btn-remove-pin">Remove PIN</button>' : ''}
+        </div>
+      </div>
       <button class="btn btn-primary" id="btn-save-settings">Save Settings</button>
     </div>`;
 
@@ -965,6 +1015,12 @@ function renderSettings(container) {
     const btn = document.getElementById('btn-save-settings');
     btn.disabled = true; btn.textContent = 'Saving...';
     try {
+      // Save PIN if entered
+      const pinVal = document.getElementById('set-pin').value.trim();
+      if (pinVal) {
+        await api('/api/config', { method: 'PUT', body: { pin: pinVal } });
+      }
+
       // Save stages
       const cleanedStages = editStages.map(s => s.trim()).filter(Boolean);
       if (cleanedStages.length) {
@@ -984,4 +1040,16 @@ function renderSettings(container) {
     } catch (e) { showToast(e.message, 'error'); }
     btn.disabled = false; btn.textContent = 'Save Settings';
   };
+
+  const removeBtn = document.getElementById('btn-remove-pin');
+  if (removeBtn) {
+    removeBtn.onclick = async () => {
+      if (!confirm('Remove PIN protection?')) return;
+      await api('/api/config', { method: 'PUT', body: { pin: null } });
+      sessionStorage.removeItem('ch-pin-auth');
+      await loadAll();
+      showToast('PIN removed');
+      navigate('settings');
+    };
+  }
 }
