@@ -458,7 +458,7 @@ textarea { resize: vertical; }
 .editor-field input,
 .editor-field textarea,
 .editor-field select { width: 100%; }
-.editor-field textarea { min-height: 200px; line-height: 1.6; }
+.editor-field textarea { min-height: 400px; line-height: 1.6; flex: 1; resize: vertical; }
 .char-count { font-size: 0.8rem; color: var(--text-dim); text-align: right; margin-top: 4px; }
 .char-count.warn { color: var(--warning); }
 .char-count.over { color: var(--error); }
