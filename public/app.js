@@ -546,7 +546,13 @@ function renderCreate(container) {
         </div>
         <div class="editor-field">
           <label>Schedule Date</label>
-          <input type="datetime-local" id="se-schedule-date" value="${p.scheduledAt ? p.scheduledAt.slice(0,16) : ''}">
+          <div class="datepicker-wrap" id="se-schedule-wrap">
+            <div class="datepicker-trigger" id="se-schedule-trigger">
+              <span id="se-schedule-display">${p.scheduledAt ? new Date(p.scheduledAt).toLocaleString('en', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Select date & time'}</span>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M1.5 6h13M5 1v3M11 1v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+            </div>
+            <input type="hidden" id="se-schedule-date" value="${p.scheduledAt ? p.scheduledAt.slice(0,16) : ''}">
+          </div>
         </div>
         <div id="se-error" class="editor-error"></div>
       </div>
@@ -633,6 +639,14 @@ function renderCreate(container) {
   document.getElementById('se-media').addEventListener('input', updatePreview);
   updateCharCount();
   updatePreview();
+
+  // Custom datepicker
+  initDatepicker(
+    document.getElementById('se-schedule-wrap'),
+    document.getElementById('se-schedule-trigger'),
+    document.getElementById('se-schedule-date'),
+    document.getElementById('se-schedule-display')
+  );
 
   // Back
   document.getElementById('se-back').onclick = () => {
@@ -1050,6 +1064,110 @@ function renderSettings(container) {
       await loadAll();
       showToast('PIN removed');
       navigate('settings');
+    };
+  }
+}
+
+// ── CUSTOM DATEPICKER ────────────────────────────────────────────────────────
+function initDatepicker(wrap, trigger, hiddenInput, displayEl) {
+  let pickerEl = null;
+  let currentDate = hiddenInput.value ? new Date(hiddenInput.value) : new Date();
+  let selectedDate = hiddenInput.value ? new Date(hiddenInput.value) : null;
+  let viewMonth = currentDate.getMonth();
+  let viewYear = currentDate.getFullYear();
+  let selHour = selectedDate ? selectedDate.getHours() : 12;
+  let selMin = selectedDate ? selectedDate.getMinutes() : 0;
+
+  trigger.addEventListener('click', e => { e.stopPropagation(); toggle(); });
+
+  function toggle() {
+    if (pickerEl) { close(); return; }
+    pickerEl = el('div', { className: 'dp' });
+    pickerEl.addEventListener('click', e => e.stopPropagation());
+    render();
+    wrap.appendChild(pickerEl);
+    position();
+  }
+
+  function close() { if (pickerEl) { pickerEl.remove(); pickerEl = null; } }
+  document.addEventListener('click', close);
+
+  function position() {
+    if (!pickerEl) return;
+    const rect = trigger.getBoundingClientRect();
+    const spaceRight = window.innerWidth - rect.right;
+    const spaceLeft = rect.left;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    pickerEl.style.position = 'absolute';
+    pickerEl.style.zIndex = '700';
+    if (spaceBelow > 340) { pickerEl.style.top = '100%'; pickerEl.style.bottom = 'auto'; pickerEl.style.marginTop = '6px'; }
+    else { pickerEl.style.bottom = '100%'; pickerEl.style.top = 'auto'; pickerEl.style.marginBottom = '6px'; }
+    if (spaceRight > 300) { pickerEl.style.left = '0'; pickerEl.style.right = 'auto'; }
+    else if (spaceLeft > 300) { pickerEl.style.right = '0'; pickerEl.style.left = 'auto'; }
+    else { pickerEl.style.left = '0'; }
+  }
+
+  function render() {
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+    const today = new Date();
+
+    let html = `<div class="dp-header">
+      <button class="dp-nav" id="dp-prev"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M8 2L4 6l4 4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></button>
+      <span class="dp-month">${months[viewMonth]} ${viewYear}</span>
+      <button class="dp-nav" id="dp-next"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="dp-days">
+      <div class="dp-dh">Su</div><div class="dp-dh">Mo</div><div class="dp-dh">Tu</div><div class="dp-dh">We</div><div class="dp-dh">Th</div><div class="dp-dh">Fr</div><div class="dp-dh">Sa</div>`;
+
+    for (let i = 0; i < firstDay; i++) html += '<div class="dp-day dp-empty"></div>';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const isToday = d === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
+      const isSel = selectedDate && d === selectedDate.getDate() && viewMonth === selectedDate.getMonth() && viewYear === selectedDate.getFullYear();
+      html += `<div class="dp-day${isToday ? ' dp-today' : ''}${isSel ? ' dp-selected' : ''}" data-day="${d}">${d}</div>`;
+    }
+    html += `</div>
+    <div class="dp-time">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.2"/><path d="M7 4v3l2 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <input type="number" class="dp-time-input" id="dp-hour" min="0" max="23" value="${String(selHour).padStart(2,'0')}"> :
+      <input type="number" class="dp-time-input" id="dp-min" min="0" max="59" step="5" value="${String(selMin).padStart(2,'0')}">
+    </div>
+    <div class="dp-actions">
+      <button class="btn btn-sm btn-secondary" id="dp-clear">Clear</button>
+      <button class="btn btn-sm btn-primary" id="dp-apply">Apply</button>
+    </div>`;
+
+    pickerEl.innerHTML = html;
+
+    pickerEl.querySelector('#dp-prev').onclick = () => { viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; } render(); };
+    pickerEl.querySelector('#dp-next').onclick = () => { viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; } render(); };
+
+    pickerEl.querySelectorAll('.dp-day[data-day]').forEach(dayEl => {
+      dayEl.onclick = () => {
+        const d = parseInt(dayEl.dataset.day);
+        selectedDate = new Date(viewYear, viewMonth, d, selHour, selMin);
+        render();
+      };
+    });
+
+    pickerEl.querySelector('#dp-hour').onchange = e => { selHour = Math.min(23, Math.max(0, parseInt(e.target.value) || 0)); };
+    pickerEl.querySelector('#dp-min').onchange = e => { selMin = Math.min(59, Math.max(0, parseInt(e.target.value) || 0)); };
+
+    pickerEl.querySelector('#dp-clear').onclick = () => {
+      selectedDate = null;
+      hiddenInput.value = '';
+      displayEl.textContent = 'Select date & time';
+      close();
+    };
+
+    pickerEl.querySelector('#dp-apply').onclick = () => {
+      if (!selectedDate) { selectedDate = new Date(viewYear, viewMonth, new Date().getDate(), selHour, selMin); }
+      selectedDate.setHours(selHour, selMin, 0, 0);
+      const iso = selectedDate.toISOString().slice(0, 16);
+      hiddenInput.value = iso;
+      displayEl.textContent = selectedDate.toLocaleString('en', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      close();
     };
   }
 }
