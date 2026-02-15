@@ -348,7 +348,6 @@ function renderPipeline(container) {
     stagePosts.forEach(p => {
       const card = el('div', { className: 'pipeline-card', draggable: 'true', 'data-id': p.id });
       card.innerHTML = `
-        <div class="pipeline-card-img">${postImageHtml(p, 120)}</div>
         <div class="pipeline-card-body">
           <div class="pipeline-card-title">${escHtml(p.title || p.content.slice(0, 60))}</div>
           <div class="pipeline-card-meta">

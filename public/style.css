@@ -49,9 +49,10 @@ input, textarea, select { font-family: inherit; color: inherit; background: var(
 input:focus, textarea:focus, select:focus { border-color: var(--accent); }
 textarea { resize: vertical; }
 ::selection { background: var(--accent); color: #000; }
-::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: transparent; border-radius: 2px; }
+*:hover::-webkit-scrollbar-thumb { background: var(--border); }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
 
 /* ── Layout ───────────────────────────────────────────────────────────────── */
