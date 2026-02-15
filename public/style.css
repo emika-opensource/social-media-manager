@@ -283,7 +283,7 @@ textarea { resize: vertical; }
   gap: 16px;
   overflow-x: auto;
   padding-bottom: 16px;
-  min-height: calc(100vh - 180px);
+  height: calc(100vh - 160px);
 }
 
 .pipeline-column {
@@ -295,7 +295,7 @@ textarea { resize: vertical; }
   border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 180px);
+  height: 100%;
 }
 
 .pipeline-column-header {
@@ -370,12 +370,13 @@ textarea { resize: vertical; }
   color: var(--text-dim);
 }
 
-.pipeline-card-body { padding: 12px; }
+.pipeline-card-body { padding: 16px; }
 
 .pipeline-card-title {
   font-weight: 600;
-  font-size: 0.88rem;
-  margin-bottom: 8px;
+  font-size: 0.92rem;
+  margin-bottom: 10px;
+  line-height: 1.4;
 }
 
 .pipeline-card-meta {
