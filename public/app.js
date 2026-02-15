@@ -274,15 +274,6 @@ function renderDashboard(container) {
         <h3 class="fw-600 mb-16">Recent Posts</h3>
         <div id="recent-posts"></div>
       </div>
-      <div class="card">
-        <h3 class="fw-600 mb-16">Quick Actions</h3>
-        <div class="flex gap-8" style="flex-wrap:wrap">
-          <button class="btn btn-secondary" onclick="location.hash='create'">Create Post</button>
-          <button class="btn btn-secondary" onclick="location.hash='pipeline'">View Pipeline</button>
-          <button class="btn btn-secondary" onclick="location.hash='calendar'">Calendar</button>
-          <button class="btn btn-secondary" onclick="location.hash='analytics'">Analytics</button>
-        </div>
-      </div>
     </div>`;
 
   const rp = document.getElementById('recent-posts');
