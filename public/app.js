@@ -507,7 +507,7 @@ function renderCreate(container) {
       <div class="split-editor-topbar-right">
         <button class="btn btn-secondary" id="se-save-draft">Save Draft</button>
         <button class="btn btn-secondary" id="se-schedule">Schedule</button>
-        <button class="btn btn-success" id="se-publish">Publish</button>
+        <button class="btn btn-success" id="se-publish">Mark as Published</button>
         ${isEdit ? '<button class="btn btn-danger btn-sm" id="se-delete">Delete</button>' : ''}
       </div>
     </div>
