@@ -973,9 +973,10 @@ function renderSettings(container) {
         <div id="settings-stages"></div>
       </div>
       <div class="settings-section">
-        <h3>Posting</h3>
-        <div class="form-group"><label>Posting Frequency</label><div id="set-freq-wrap"></div></div>
-        <div class="form-group"><label>Timezone</label><input type="text" id="set-timezone" value="${escHtml(c.timezone || 'UTC')}" placeholder="UTC"></div>
+        <h3>Posting Schedule</h3>
+        <div class="subtitle mb-12">Set how many posts per day</div>
+        <div id="set-schedule-grid" class="schedule-grid"></div>
+        <div class="form-group mt-16"><label>Timezone</label><input type="text" id="set-timezone" value="${escHtml(c.timezone || 'UTC')}" placeholder="UTC"></div>
       </div>
       <div class="settings-section">
         <h3>PIN Protection</h3>
@@ -995,13 +996,30 @@ function renderSettings(container) {
     platContainer.appendChild(chip);
   });
 
-  let freq = c.postingFrequency || 'daily';
-  const freqWrap = document.getElementById('set-freq-wrap');
-  freqWrap.appendChild(makeCustomSelect([
-    { value: 'daily', label: 'Daily' },
-    { value: '3x-week', label: '3x per Week' },
-    { value: 'weekly', label: 'Weekly' }
-  ], freq, v => { freq = v; }));
+  const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const DAY_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const defaultSchedule = { monday: 1, tuesday: 1, wednesday: 1, thursday: 1, friday: 1, saturday: 0, sunday: 0 };
+  const schedule = { ...defaultSchedule, ...(c.postingSchedule || {}) };
+  const schedGrid = document.getElementById('set-schedule-grid');
+  DAYS.forEach((day, i) => {
+    const key = day.toLowerCase();
+    const row = el('div', { className: 'schedule-row' });
+    const label = el('span', { className: 'schedule-day', textContent: DAY_SHORT[i] });
+    const minus = el('button', { className: 'btn btn-ghost btn-sm schedule-btn', textContent: '\u2212', onClick: () => {
+      if (schedule[key] > 0) { schedule[key]--; valEl.textContent = schedule[key]; updateRowState(); }
+    }});
+    const valEl = el('span', { className: 'schedule-value', textContent: schedule[key] });
+    const plus = el('button', { className: 'btn btn-ghost btn-sm schedule-btn', textContent: '+', onClick: () => {
+      if (schedule[key] < 10) { schedule[key]++; valEl.textContent = schedule[key]; updateRowState(); }
+    }});
+    function updateRowState() {
+      row.classList.toggle('schedule-off', schedule[key] === 0);
+      valEl.textContent = schedule[key];
+    }
+    row.append(label, minus, valEl, plus);
+    row.classList.toggle('schedule-off', schedule[key] === 0);
+    schedGrid.appendChild(row);
+  });
 
   // Pipeline stages editor
   let editStages = [...state.pipelineStages];
@@ -1046,7 +1064,7 @@ function renderSettings(container) {
         brandVoice: document.getElementById('set-voice').value,
         targetAudience: document.getElementById('set-audience').value,
         competitors: document.getElementById('set-competitors').value.split('\n').map(s => s.trim()).filter(Boolean),
-        postingFrequency: freq,
+        postingSchedule: schedule,
         timezone: document.getElementById('set-timezone').value
       }});
       await loadAll();

@@ -578,6 +578,23 @@ textarea { resize: vertical; }
 .dp-time-input::-webkit-inner-spin-button { -webkit-appearance: none; }
 .dp-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
+/* ── Posting Schedule ──────────────────────────────────────────────────────── */
+.schedule-grid { display: flex; flex-direction: column; gap: 4px; }
+.schedule-row {
+  display: flex; align-items: center; gap: 12px; padding: 8px 12px;
+  background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  transition: all var(--transition);
+}
+.schedule-row.schedule-off { opacity: 0.4; }
+.schedule-day { width: 40px; font-weight: 600; font-size: 0.88rem; color: var(--text); }
+.schedule-value {
+  width: 28px; text-align: center; font-weight: 700; font-size: 1rem; color: var(--accent);
+}
+.schedule-btn {
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; padding: 0; border-radius: var(--radius-sm);
+}
+
 /* Hashtag Input */
 .hashtag-container {
   display: flex;
