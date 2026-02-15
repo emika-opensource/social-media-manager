@@ -521,7 +521,7 @@ function renderCreate(container) {
   hashInput.addEventListener('keydown', e => {
     if (e.key === 'Enter' && hashInput.value.trim()) {
       e.preventDefault();
-      const val = hashInput.value.trim().replace(/^#/, '');
+      const val = hashInput.value.trim().replace(/^#+/, '');
       if (val && !hashtags.includes(val)) { hashtags.push(val); renderHashtags(); updatePreview(); }
       hashInput.value = '';
     }
